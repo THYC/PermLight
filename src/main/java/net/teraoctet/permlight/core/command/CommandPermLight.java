@@ -28,9 +28,10 @@ public class CommandPermLight implements CommandExecutor {
             PaginationList.Builder pages = getGame().getServiceManager().provide(PaginationService.class).get().builder();
             pages.title(Text.builder().color(TextColors.GREEN).append(Text.of(TextColors.AQUA, "PermLight")).build());
             List<Text> list = new ArrayList<>();
-            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight user")).onClick(TextActions.suggestCommand("/permlight user")).build());
-            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight group")).onClick(TextActions.suggestCommand("/permlight group")).build());
-            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight world")).onClick(TextActions.suggestCommand("/permlight world")).build());
+            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight user")).onClick(TextActions.runCommand("/permlight user")).build());
+            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight group")).onClick(TextActions.runCommand("/permlight group")).build());
+            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight world")).onClick(TextActions.runCommand("/permlight world")).build());
+            list.add(Text.builder().color(TextColors.YELLOW).append(of("/permlight reload")).onClick(TextActions.runCommand("/permlight reload")).build());
             pages.contents(list);                
             pages.sendTo(src);
                 

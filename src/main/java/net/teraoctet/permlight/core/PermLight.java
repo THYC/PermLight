@@ -5,7 +5,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import net.teraoctet.permlight.api.PermGroup;
 import net.teraoctet.permlight.api.PermManager;
 import net.teraoctet.permlight.api.PermUser;
@@ -21,11 +20,9 @@ import org.spongepowered.api.event.entity.living.humanoid.player.RespawnPlayerEv
 import org.spongepowered.api.event.filter.cause.First;
 import org.spongepowered.api.event.game.GameReloadEvent;
 import org.spongepowered.api.event.game.state.GameInitializationEvent;
-import org.spongepowered.api.event.game.state.GameLoadCompleteEvent;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.plugin.PluginContainer;
-import org.spongepowered.api.service.user.UserStorageService;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.channel.MessageChannel;
 import org.spongepowered.api.text.serializer.TextSerializers;
@@ -50,7 +47,6 @@ public class PermLight {
     public static final Map<String, PermGroup> PERMGROUPS = new HashMap<>(); 
     public static final Map<String, PermUser> PERMUSERS = new HashMap<>();    
     public static final PermManager PM = new PermManager();  
-    UserStorageService service;
     
     /**
      *
@@ -60,30 +56,14 @@ public class PermLight {
     public void onServerInit(GameInitializationEvent event){
         MessageChannel.TO_CONSOLE.send(format("&e[PERMLIGHT] &b... Init..."));
         PermLight.plugin = this;
-        getGame().getCommandManager().register(this, new CommandManager().CommandPermLight, "permlight", "perml", "lp", "pl", "pex");                
+        getGame().getCommandManager().register(this, new CommandManager().CommandPermLight, "permlight", "perml", "lp", "pl", "pex");  
+        getGame().getCommandManager().register(this, new CommandManager().CommandReload, "permreload");                
 
         File folder = new File("config/permlight");
         if(!folder.exists()) folder.mkdir();
         PM.setup();
         PermManager.init_group();
         PermManager.init_user();
-    }
-    
-    /**
-     * 
-     * @param event 
-     */
-    @Listener
-    public void onServerLoad(GameLoadCompleteEvent event){
-        Optional<UserStorageService> userss = game.getServiceManager().provide(UserStorageService.class);
-
-        if (userss.isPresent()){
-            service = userss.get();
-        }
-    }
-
-    public UserStorageService getUserStorageService(){
-        return service;
     }
 	
     /**
@@ -102,6 +82,8 @@ public class PermLight {
      */
     @Listener(order = Order.FIRST, beforeModifications = true)
     public void onRespawnPlayer(RespawnPlayerEvent event, @First Player player) {      
+        player.getPlayer().get().getSubjectData().clearPermissions();
+        PM.reloadUser(player.getIdentifier());
         PM.loadPermissions(player);
     }
     
@@ -112,12 +94,16 @@ public class PermLight {
      */
     @Listener(order = Order.FIRST)
     public void onClientConnectionJoin(ClientConnectionEvent.Join event, @First Player player) {
+        player.getPlayer().get().getSubjectData().clearPermissions();
+        PM.reloadUser(player.getIdentifier());
         PM.loadPermissions(player);
     }
     
     @Listener
     public void onTeleport(MoveEntityEvent.Teleport event, @First Player player) {
         if (!event.getFromTransform().getExtent().getName().equals(event.getToTransform().getExtent().getName())){
+            player.getPlayer().get().getSubjectData().clearPermissions();
+            PM.reloadUser(player.getIdentifier());
             PM.loadPermissions(player);
         }
     }

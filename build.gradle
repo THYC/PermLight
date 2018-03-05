@@ -14,9 +14,6 @@ repositories {
         name = 'sponge'
         url = 'https://repo.spongepowered.org/maven'
     }
-    maven {
-    	url "http://maven.sk89q.com/repo/"
-    }
 }
 
 dependencies {

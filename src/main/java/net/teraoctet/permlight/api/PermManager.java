@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import static net.teraoctet.permlight.core.PermLight.PERMGROUPS;
 import static net.teraoctet.permlight.core.PermLight.PERMUSERS;
+import static net.teraoctet.permlight.core.PermLight.plugin;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.ConfigurationOptions;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
@@ -27,7 +28,7 @@ import org.spongepowered.api.util.Tristate;
  */
 public class PermManager {
     private static final TypeToken<Map<String,Boolean>> TOKEN_PERMGROUPS = new TypeToken<Map<String,Boolean>>() {};
-    private static final TypeToken<PermUser> TOKEN_PERMUSERS = new TypeToken<PermUser>(){};
+    private static final TypeToken<Map<String,Boolean>> TOKEN_PERMUSERS = new TypeToken<Map<String,Boolean>>() {};
     private static final File FILE_GROUP = new File("config/permlight/permission.conf");
     private static final File FILE_USER = new File("config/permlight/user.conf");
     private static final ConfigurationLoader<?> MANAGER_GROUP = HoconConfigurationLoader.builder().setFile(FILE_GROUP).build();
@@ -82,8 +83,10 @@ public class PermManager {
             userNode = MANAGER_USER.load();
             userNode.getChildrenMap().entrySet().stream().forEach((user) -> {
                 try {
-                    PermUser permUser = userNode.getNode(user.getKey().toString()).getValue(TOKEN_PERMUSERS);
-                    PERMUSERS.put(user.getKey().toString(),permUser);
+                    PermUser permUser = new PermUser(
+                        user.getKey().toString(),
+                        userNode.getNode(user.getKey().toString(),"group").getString("default"),
+                        userNode.getNode(user.getKey().toString(),"permission").getValue(TOKEN_PERMUSERS));
                 } catch (ObjectMappingException ex) {
                     Logger.getLogger(PermManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -100,7 +103,7 @@ public class PermManager {
      * @param group
      * @return 
      */
-    public Optional<PermGroup> reload(String group){
+    public Optional<PermGroup> reloadGroup(String group){
         try {
             groupNode = MANAGER_GROUP.load();
             if(!groupNode.getNode(group).isVirtual()){   
@@ -129,7 +132,10 @@ public class PermManager {
         try {
             userNode = MANAGER_USER.load();
             if(!userNode.getNode(uuid).isVirtual()){
-                PermUser permUser = userNode.getNode(uuid).getValue(TOKEN_PERMUSERS);
+                PermUser permUser = new PermUser(
+                    uuid,
+                    userNode.getNode(uuid,"group").getString("default"),
+                    userNode.getNode(uuid,"permission").getValue(TOKEN_PERMUSERS));
                 PERMUSERS.put(uuid, permUser);
                 return Optional.of(permUser);
             }
@@ -212,8 +218,9 @@ public class PermManager {
      */
     public boolean saveUser(PermUser permUser){
         try {
-            userNode = MANAGER_USER.load();           
-            userNode.getNode(permUser.getIdentifier()).setValue(TOKEN_PERMUSERS, permUser);
+            userNode = MANAGER_USER.load();  
+            userNode.getNode(permUser.uuid,"group").setValue(permUser.getGroup());
+            userNode.getNode(permUser.uuid,"permission").setValue(TOKEN_PERMUSERS, permUser.getMapPermission());
             MANAGER_USER.save(userNode);
             PERMUSERS.put(permUser.getIdentifier(), permUser);
             return true;
@@ -233,7 +240,7 @@ public class PermManager {
         if(getGroup(group).isPresent()){
             PermGroup permGroup = getGroup(group).get();
             if(getGroupParent(permGroup).isPresent()){
-                permissions.putAll(getPermissionGroup(getGroupParent(permGroup).get().toString()));
+                permissions.putAll(getPermissionGroup(getGroupParent(permGroup).get().getGroup()));
             }
             if(!permGroup.getPermission().isEmpty()){
                 permissions.putAll(permGroup.getPermission());
@@ -267,13 +274,13 @@ public class PermManager {
         Map<String,Boolean> permissions = new HashMap();
         Optional<PermUser> permUser = getUser(uuid);
         if(permUser.isPresent()){
-            permissions = getPermissionUser(uuid);
+            permissions.putAll(getPermissionUser(uuid));
         }else{
             permUser = Optional.of(new PermUser(uuid,"default"));
         }
         if(getGroup(permUser.get().getGroup()).isPresent()){
             PermGroup permGroup = getGroup(permUser.get().getGroup()).get();
-            permissions.putAll(getPermissionGroup(permGroup.toString()));
+            permissions.putAll(getPermissionGroup(permGroup.getGroup()));
         }
         return permissions;
     }
@@ -312,9 +319,11 @@ public class PermManager {
      */
     public void loadPermissions(Player player){
         String uuid = player.getIdentifier();
+        plugin.getLogger().info(uuid);
         PermUser permUser = new PermUser(uuid);
+        plugin.getLogger().info("-" + getUser(uuid).isPresent());
         if(getUser(uuid).isPresent())permUser = getUser(uuid).get();
-        getAllPermission(uuid).entrySet().forEach((e) -> {
+        getAllPermission(uuid).entrySet().forEach((Entry<String, Boolean> e) -> {
             player.getSubjectData().setPermission(SubjectData.GLOBAL_CONTEXT, e.getKey(), Tristate.fromBoolean(e.getValue()));
         });
         if(getSuffixGroup(permUser.getGroup()).isPresent())player.getSubjectData().setOption(SubjectData.GLOBAL_CONTEXT, "suffix", getSuffixGroup(permUser.getGroup()).get());          
@@ -329,7 +338,9 @@ public class PermManager {
         Sponge.getGame().getServer().getOnlinePlayers().forEach((player) -> {
             PermUser permUser = new PermUser(player.getIdentifier());
             String uuid = permUser.getIdentifier();
+            
             if(getUser(uuid).isPresent())permUser = getUser(uuid).get();
+            
             getAllPermission(uuid).entrySet().forEach((e) -> {
                 player.getSubjectData().setPermission(SubjectData.GLOBAL_CONTEXT, e.getKey(), Tristate.fromBoolean(e.getValue()));
             });
@@ -339,5 +350,9 @@ public class PermManager {
             }
         });
         return true;
+    }
+    
+    public Map<String,PermGroup> getGroups(){
+        return PERMGROUPS;
     }
 }

@@ -16,6 +16,7 @@ import org.spongepowered.api.entity.living.player.User;
 import org.spongepowered.api.service.pagination.PaginationList;
 import org.spongepowered.api.service.pagination.PaginationService;
 import org.spongepowered.api.text.Text;
+import org.spongepowered.api.text.action.TextActions;
 import org.spongepowered.api.world.World;
 
 /**
@@ -77,6 +78,10 @@ public class CommandCallBack {
             PermUser permUser = new PermUser(user.getIdentifier());
             if(PM.getUser(user.getIdentifier()).isPresent()){
                 permUser = PM.getUser(user.getIdentifier()).get();
+            }else{
+                if(PM.reloadUser(user.getIdentifier()).isPresent()){
+                    permUser = PM.reloadUser(user.getIdentifier()).get();
+                }
             }   
             PermGroup permGroup = new PermGroup("default");
             if(PM.getGroup(permUser.getGroup()).isPresent()){
@@ -88,11 +93,12 @@ public class CommandCallBack {
             
             List<Text> list = new ArrayList<>();
             list.add(format("&eGroup :  &b" + permUser.getGroup()));      
-            list.add(format("&ePermission : "));
+            list.add(format("&ePermission user : "));
             for (Map.Entry e : permUser.getMapPermission().entrySet()){
                 list.add(format("&7- " + e.getKey() + " : " + e.getValue()));
             }
-            for (Map.Entry e : permGroup.getPermission().entrySet()){
+            list.add(format("&ePermission group : "));
+            for (Map.Entry e : PM.getPermissionGroup(permUser.getGroup()).entrySet()){
                 list.add(format("&7- " + e.getKey() + " : " + e.getValue()));
             }
             if(PM.getPrefixGroup(permGroup.getGroup()).isPresent()){
@@ -286,15 +292,18 @@ public class CommandCallBack {
             }            
             
             PaginationList.Builder pages = getGame().getServiceManager().provide(PaginationService.class).get().builder();
-            pages.title(format("&bPermLight - Info &e" + group));
+            pages.title(format("&bPermLight - Info group &e" + group));
             
             List<Text> list = new ArrayList<>();
             if(permGroup.getParent().isPresent()){
                 list.add(format("&eParent :  &b" + permGroup.getParent().get()));      
             }
             list.add(format("&ePermission : "));
-            for (Map.Entry e : permGroup.getPermission().entrySet()){
-                list.add(format("&7- " + e.getKey() + " : " + e.getValue()));
+            for (Map.Entry e : PM.getPermissionGroup(group).entrySet()){
+                list.add(format("&7- " + e.getKey() + " : " + e.getValue())
+                    .concat(Text.builder().append(format("&4 [ X ] "))
+                    .onClick(TextActions.executeCallback(callCmdRemovePerm(ctx,e.getKey())))    
+                    .onHover(TextActions.showText(format("&cSupprime"))).toText()));
             }
             if(PM.getPrefixGroup(group).isPresent()){
                 list.add(format("&ePrefix :  &b" + PM.getPrefixGroup(group).get()));      
@@ -306,6 +315,35 @@ public class CommandCallBack {
             pages.contents(list);                
             pages.sendTo(src);
             
+        };
+    }
+    
+    /**
+     * 
+     * @param ctx
+     * @param perm
+     * @return 
+     */
+    public Consumer<CommandSource> callCmdRemovePerm(CommandContext ctx, Object perm) {
+	return (CommandSource src) -> {
+            String group = ctx.<String> getOne("group").get();
+            PermGroup permGroup = new PermGroup(group);
+            if(PM.getGroup(group).isPresent()){
+                permGroup = PM.getGroup(group).get();
+            } 
+            if(permGroup.getPermission().containsKey(perm.toString())){
+                permGroup.getPermission().remove(perm);
+                boolean saveGroup = PM.saveGroup(permGroup);
+                if(saveGroup)src.sendMessage(format("&ePermission retiré avec succès"));
+            }else{
+                src.sendMessage(format("&eaction impossible, cette permission doit appartenir à un groupe enfant"));
+                src.sendMessage(format("&epour annuler cette permission pour ce groupe, supprimer celle-ci du groupe enfant"));
+                //src.sendMessage(format("&eou bien taper la commande /permlight group " + group + "permission" + perm.toString() + " false"));
+                src.sendMessage(Text.builder().append(format("&eou bien taper la commande /permlight group " + group + "permission" + perm.toString() + " false"))
+                    .onClick(TextActions.runCommand("/permlight group " + group + " permission " + perm.toString() + " false"))    
+                    .onHover(TextActions.showText(format("&cDésactive cette permission"))).toText());
+            }
+        
         };
     }
 }

@@ -9,7 +9,13 @@ import org.spongepowered.api.text.Text;
  * @author thyc
  */
 public class CommandManager {
-            
+    
+    public CommandSpec CommandPermLightReload = CommandSpec.builder()
+            .description(Text.of("Reload permission"))
+            .permission("permlight") 
+            .executor(new CommandPermLightReload())
+            .build(); 
+    
     public CommandSpec CommandPermLightGroup = CommandSpec.builder()
             .description(Text.of("Manager vos permissions"))
             .permission("permlight") 
@@ -17,8 +23,9 @@ public class CommandManager {
                     GenericArguments.optional(GenericArguments.string(Text.of("group"))),
                     GenericArguments.optional(GenericArguments.string(Text.of("type"))),
                     GenericArguments.optional(GenericArguments.string(Text.of("value"))),
-                    GenericArguments.optional(GenericArguments.bool(Text.of("bool"))))) 
-            .executor(new CommandPermLightType())
+                    GenericArguments.optional(GenericArguments.bool(Text.of("bool"))),
+                    GenericArguments.optional(GenericArguments.string(Text.of("cde"))))) 
+            .executor(new CommandPermLightGroup())
             .build(); 
     
     public CommandSpec CommandPermLightWorld = CommandSpec.builder()
@@ -30,8 +37,9 @@ public class CommandManager {
                     GenericArguments.optional(GenericArguments.string(Text.of("group"))),
                     GenericArguments.optional(GenericArguments.string(Text.of("type"))),                  
                     GenericArguments.optional(GenericArguments.string(Text.of("value"))),
-                    GenericArguments.optional(GenericArguments.bool(Text.of("bool"))))) 
-            .executor(new CommandPermLightType())
+                    GenericArguments.optional(GenericArguments.bool(Text.of("bool"))),
+                    GenericArguments.optional(GenericArguments.string(Text.of("cde"))))) 
+            .executor(new CommandPermLightWorld())
             .build(); 
     
     public CommandSpec CommandPermLightUser = CommandSpec.builder()
@@ -41,8 +49,9 @@ public class CommandManager {
                     GenericArguments.optional(GenericArguments.user(Text.of("user"))),
                     GenericArguments.optional(GenericArguments.string(Text.of("type"))),
                     GenericArguments.optional(GenericArguments.string(Text.of("value"))),
-                    GenericArguments.optional(GenericArguments.bool(Text.of("bool")))))             
-            .executor(new CommandPermLightType()) 
+                    GenericArguments.optional(GenericArguments.bool(Text.of("bool"))),
+                    GenericArguments.optional(GenericArguments.string(Text.of("cde"))))) 
+            .executor(new CommandPermLightUser()) 
             .build(); 
         
     public CommandSpec CommandPermLight = CommandSpec.builder()
@@ -53,7 +62,13 @@ public class CommandManager {
             .child(CommandPermLightGroup, "group")
             .child(CommandPermLightUser, "user")
             .child(CommandPermLightWorld, "world")
+            .child(CommandPermLightReload, "reload")
             .executor(new CommandPermLight())
             .build();
     
+    public CommandSpec CommandReload = CommandSpec.builder()
+            .description(Text.of("Reload permission"))
+            .permission("permlight") 
+            .executor(new CommandPermLightReload())
+            .build();
 }
